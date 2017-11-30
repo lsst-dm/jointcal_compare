@@ -20,7 +20,6 @@ base_slurm = """#!/bin/bash -l
 
 source /software/lsstsw/stack/loadLSST.bash
 setup -r /project/parejkoj/stack/validate_drp/
-setup -r /project/parejkoj/stack/meas_mosaic
 setup -jkr /project/parejkoj/stack/validate_base
 setup -jkr /project/parejkoj/stack/afw
 setup -jkr /project/parejkoj/stack/obs_subaru
@@ -35,9 +34,9 @@ base_cmd = ("srun  --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log
             " --longlog --no-versions")
 
 sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
-datadir = '/datasets/hsc/repo/rerun/private/lauren/DM-11786'
-outdir = 'validate-meas_mosaic'
-config = 'validateConfig-meas_mosaic.py'
+datadir = '/datasets/hsc/repo/rerun/private/parejkoj/DM-11783'
+outdir = 'validate-jointcal'
+config = 'validateConfig-jointcal.py'
 
 ccd = "0..8^10..103"
 

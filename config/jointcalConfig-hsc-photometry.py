@@ -1,5 +1,4 @@
 config.doAstrometry = False
-config.astrometryModel = "constrainedPoly"
 config.doPhotometry = True
 config.photometryModel = "constrained"
 

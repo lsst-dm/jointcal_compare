@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Generate slurm files for multiple validate jobs, parallelized across filters.
+Generate slurm files for multiple validate jobs.`
 """
 from __future__ import print_function
 
@@ -10,6 +10,7 @@ import subprocess
 
 #SBATCH --output=/project/parejkoj/DM-11783/logs/{name}-%j.log
 #SBATCH --error=/project/parejkoj/DM-11783/logs/{name}-%j.err
+#SBATCH --ntasks={ntasks}
 
 base_slurm = """#!/bin/bash -l
 
@@ -38,6 +39,7 @@ sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
 datadir = '/datasets/hsc/repo/rerun/private/lauren/DM-11786'
 outdir = 'validate-meas_mosaic'
 config = 'validateConfig-meas_mosaic.py'
+# rerun = 'DM-10404/SFM:private/lauren/DM-11785/'
 
 ccd = "0..8^10..103"
 
