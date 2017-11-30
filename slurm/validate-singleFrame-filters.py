@@ -8,9 +8,10 @@ import os
 import sqlite3
 import subprocess
 
+import lsst.utils
+
 #SBATCH --output=/project/parejkoj/DM-11783/logs/{name}-%j.log
 #SBATCH --error=/project/parejkoj/DM-11783/logs/{name}-%j.err
-#SBATCH --ntasks={ntasks}
 
 base_slurm = """#!/bin/bash -l
 
@@ -21,7 +22,6 @@ base_slurm = """#!/bin/bash -l
 
 source /software/lsstsw/stack/loadLSST.bash
 setup -r /project/parejkoj/stack/validate_drp/
-setup -r /project/parejkoj/stack/meas_mosaic
 setup -jkr /project/parejkoj/stack/validate_base
 setup -jkr /project/parejkoj/stack/afw
 setup -jkr /project/parejkoj/stack/obs_subaru
@@ -35,15 +35,16 @@ base_cmd = ("srun  --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log
             " --id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
             " --longlog --no-versions")
 
+pkgdir = lsst.utils.getPackageDir('jointcal_compare')
+
 sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
-datadir = '/datasets/hsc/repo/rerun/private/lauren/DM-11786'
-outdir = 'validate-meas_mosaic'
-config = 'validateConfig-meas_mosaic.py'
-# rerun = 'DM-10404/SFM:private/lauren/DM-11785/'
+datadir = '/datasets/hsc/repo/rerun/DM-10404/SFM'
+outdir = '/project/parejkoj/DM-11783/validate-singleFrame'
+config = os.path.join(pkgdir, 'config', 'validateConfig-singleFrame.py')
 
 ccd = "0..8^10..103"
 
-call = True
+call = False
 
 
 def find_visits(cursor, tract, filt, field):
