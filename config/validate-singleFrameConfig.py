@@ -1,4 +1,4 @@
-useJointCal=False
-outputPrefix="validate-singleFrame"
+config.useJointCal=False
+config.outputPrefix="validate-singleFrame"
 config.skipTEx=True
 config.verbose=True
