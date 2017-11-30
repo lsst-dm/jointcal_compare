@@ -8,6 +8,8 @@ import os
 import sqlite3
 import subprocess
 
+import lsst.utils
+
 #SBATCH --output=/project/parejkoj/DM-11783/logs/{name}-%j.log
 #SBATCH --error=/project/parejkoj/DM-11783/logs/{name}-%j.err
 
@@ -33,14 +35,18 @@ base_cmd = ("srun  --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log
             " --id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
             " --longlog --no-versions")
 
+basename = 'validate-jointcal'
+
+pkgdir = lsst.utils.getPackageDir('jointcal_compare')
+
 sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
-datadir = '/datasets/hsc/repo/rerun/private/parejkoj/DM-11783'
-outdir = 'validate-jointcal'
-config = 'validateConfig-jointcal.py'
+datadir = '/datasets/hsc/repo/rerun/DM-10404/SFM'
+outdir = os.path.join('/project/parejkoj/DM-11783', basename)
+config = os.path.join(pkgdir, 'config', basename+'Config.py')
 
 ccd = "0..8^10..103"
 
-call = True
+call = False
 
 
 def find_visits(cursor, tract, filt, field):
@@ -57,7 +63,7 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
     output = os.path.join(outdir, str(tract))
     fmtstr = dict(output=output, field=field, tract=tract, ccd=ccd,
                   datadir=datadir, config=config, ntasks=len(filters))
-    name = "validate-{field}_{tract}".format(**fmtstr)
+    name = basename + "-{field}_{tract}".format(**fmtstr)
     fmtstr['name'] = name
 
     cmd_list = []

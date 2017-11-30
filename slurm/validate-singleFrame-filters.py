@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Generate slurm files for multiple validate jobs.`
+Generate slurm files for multiple validate jobs, parallelized across filters.
 """
 from __future__ import print_function
 
