@@ -8,9 +8,6 @@ import os
 import sqlite3
 import subprocess
 
-#SBATCH --output=/project/parejkoj/DM-11783/logs/{name}-%j.log
-#SBATCH --error=/project/parejkoj/DM-11783/logs/{name}-%j.err
-
 base_slurm = """#!/bin/bash -l
 
 #SBATCH -p debug
@@ -27,12 +24,19 @@ setup -jkr /project/parejkoj/stack/obs_subaru
 setup -jkr /project/parejkoj/stack/daf_persistence
 
 {cmd}
+
+for pid in ${{pids[*]}};
+do
+    wait $pid #Wait on all PIDs, this returns 0 if ANY process fails
+done
 """
+# NOTE: double-braces around {{pids}} is to prevent python .format() confusion.
 
 base_cmd = ("srun  --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log"
             " matchedVisitMetrics.py {datadir} --output={output} -C={config}"
             " --id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
-            " --longlog --no-versions")
+            " --longlog --no-versions &\n"
+            "pids[$PROC]=$!    #Save PID of this background process")
 
 sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
 datadir = '/datasets/hsc/repo/rerun/private/lauren/DM-11786'
@@ -65,7 +69,7 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
     for filt in filters:
         visit = find_visits(cursor, tract, filt, field)
         cmd_list.append(base_cmd.format(**fmtstr, filt=filt, visit=visit))
-    cmd = ' &\n'.join(cmd_list) + ' &'
+    cmd = '\n'.join(cmd_list)
 
     outlog = open('/project/parejkoj/DM-11783/slurm-logs/{name}.log'.format(**fmtstr), 'w')
 
