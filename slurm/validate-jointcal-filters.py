@@ -70,7 +70,7 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
     for filt in filters:
         visit = find_visits(cursor, tract, filt, field)
         cmd_list.append(base_cmd.format(**fmtstr, filt=filt, visit=visit))
-    cmd = ' &\n'.join(cmd_list)
+    cmd = ' &\n'.join(cmd_list) + ' &'
 
     outlog = open('/project/parejkoj/DM-11783/slurm-logs/{name}.log'.format(**fmtstr), 'w')
 
