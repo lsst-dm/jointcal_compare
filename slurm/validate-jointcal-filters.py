@@ -20,7 +20,6 @@ base_slurm = """#!/bin/bash -l
 source /software/lsstsw/stack/loadLSST.bash
 setup -r /project/parejkoj/stack/validate_drp/
 setup -jkr /project/parejkoj/stack/validate_base
-setup -jkr /project/parejkoj/stack/afw
 setup -jkr /project/parejkoj/stack/obs_subaru
 setup -jkr /project/parejkoj/stack/daf_persistence
 

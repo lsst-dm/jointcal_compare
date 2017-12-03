@@ -21,7 +21,6 @@ source /software/lsstsw/stack/loadLSST.bash
 setup -r /project/parejkoj/stack/validate_drp/
 setup -r /project/parejkoj/stack/meas_mosaic
 setup -jkr /project/parejkoj/stack/validate_base
-setup -jkr /project/parejkoj/stack/afw
 setup -jkr /project/parejkoj/stack/obs_subaru
 setup -jkr /project/parejkoj/stack/daf_persistence
 
