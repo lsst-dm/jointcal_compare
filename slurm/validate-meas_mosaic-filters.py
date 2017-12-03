@@ -8,6 +8,8 @@ import os
 import sqlite3
 import subprocess
 
+import lsst.utils
+
 base_slurm = """#!/bin/bash -l
 
 #SBATCH -p debug
@@ -38,10 +40,14 @@ base_cmd = ("srun  --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log
             " --longlog --no-versions &\n"
             "pids[$PROC]=$!    #Save PID of this background process")
 
+basename = 'validate-meas_mosaic'
+
+pkgdir = lsst.utils.getPackageDir('jointcal_compare')
+
 sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
 datadir = '/datasets/hsc/repo/rerun/private/lauren/DM-11786'
-outdir = 'validate-meas_mosaic'
-config = 'validateConfig-meas_mosaic.py'
+outdir = os.path.join('/project/parejkoj/DM-11783', basename)
+config = os.path.join(pkgdir, 'config', basename+'Config.py')
 
 ccd = "0..8^10..103"
 
@@ -62,7 +68,7 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
     output = os.path.join(outdir, str(tract))
     fmtstr = dict(output=output, field=field, tract=tract, ccd=ccd,
                   datadir=datadir, config=config, ntasks=len(filters))
-    name = "validate-{field}_{tract}".format(**fmtstr)
+    name = basename + "-{field}_{tract}".format(**fmtstr)
     fmtstr['name'] = name
 
     cmd_list = []
