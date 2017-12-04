@@ -23,11 +23,14 @@ setup -jkr /project/parejkoj/stack/validate_base
 setup -jkr /project/parejkoj/stack/obs_subaru
 setup -jkr /project/parejkoj/stack/daf_persistence
 
+pids=()
+
 {cmd}
 
 for pid in ${{pids[*]}};
 do
-    wait $pid #Wait on all PIDs, this returns 0 if ANY process fails
+    echo "Waiting: $pid"
+    wait $pid  # Wait on all PIDs, this returns 0 if ANY process fails
 done
 """
 # NOTE: double-braces around {{pids}} is to prevent python .format() confusion.
@@ -36,7 +39,7 @@ base_cmd = ("srun  --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log
             " matchedVisitMetrics.py {datadir} --output={output} -C={config}"
             " --id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
             " --longlog --no-versions &\n"
-            "pids[$PROC]=$!    #Save PID of this background process")
+            "pids+=($!)  # Save PID of this background process")
 
 basename = 'validate-singleFrame'
 
