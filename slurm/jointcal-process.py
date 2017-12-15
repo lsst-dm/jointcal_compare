@@ -46,7 +46,6 @@ root = '/project/parejkoj/DM-11783'
 sqlitedir = os.path.join(root, 'tract-visit')
 datadir = '/datasets/hsc/repo'
 outdir = os.path.join(root, basename)
-config = 'jointcalConfig-hsc.py'
 config = os.path.join(pkgdir, 'config', basename+'Config.py')
 rerun = 'DM-10404/SFM:private/parejkoj/DM-11785'
 
