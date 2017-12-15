@@ -33,9 +33,9 @@ done
 """
 
 base_cmd = ("srun --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log"
-            "jointcal.py {datadir} --rerun={rerun} -C={config}"
-            "--id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
-            "--longlog --no-versions &\n"
+            " jointcal.py {datadir} --rerun={rerun} -C={config}"
+            " --id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
+            " --longlog --no-versions &\n"
             "pids+=($!)  # Save PID of this background process")
 
 basename = 'jointcal'
@@ -77,7 +77,7 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
         cmd_list.append(base_cmd.format(**fmtstr, filt=filt, visit=visit))
     cmd = '\n'.join(cmd_list)
 
-    outlog = open(os.path.join(root, 'slurm-logs/{name}.log'.format(**fmtstr), 'w'))
+    outlog = open(os.path.join(root, 'slurm-logs/{name}.log'.format(**fmtstr)), 'w')
 
     filename = os.path.join(root, 'scripts/{name}.sl'.format(**fmtstr))
     with open(filename, 'w') as outfile:
