@@ -12,7 +12,7 @@ import lsst.utils
 
 base_slurm = """#!/bin/bash -l
 
-#SBATCH -p debug
+#SBATCH -p normal
 #SBATCH -N 1
 #SBATCH --time=1440
 #SBATCH -J {name}
