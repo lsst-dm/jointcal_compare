@@ -1,5 +1,8 @@
 config.doAstrometry = True
 config.astrometryModel = "constrainedPoly"
+config.astrometryVisitDegree = 4
+config.astrometryChipDegree = 2
+
 config.doPhotometry = False
 
 config.astrometryRefObjLoader.ref_dataset_name='ps1_pv3_3pi_20170110'
