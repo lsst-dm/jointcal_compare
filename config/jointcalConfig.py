@@ -1,11 +1,11 @@
 config.doAstrometry = True
 config.astrometryModel = "constrained"
-config.astrometryVisitDegree = 4
-config.astrometryChipDegree = 2
+# config.astrometryVisitDegree = 5
+# config.astrometryChipDegree = 1
 
 config.doPhotometry = True
 config.photometryModel = "constrained"
-config.photometryVisitDegree = 7
+# config.photometryVisitDegree = 7
 
 config.astrometryRefObjLoader.ref_dataset_name='ps1_pv3_3pi_20170110'
 config.photometryRefObjLoader.ref_dataset_name='ps1_pv3_3pi_20170110'
