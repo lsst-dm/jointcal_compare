@@ -1,3 +1,4 @@
 setupRequired(utils)
 
 envPrepend(PATH, ${PRODUCT_DIR}/slurm)
+envPrepend(PATH, ${PRODUCT_DIR}/bin)
