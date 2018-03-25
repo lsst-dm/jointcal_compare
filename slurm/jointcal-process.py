@@ -18,8 +18,8 @@ base_slurm = """#!/bin/bash -l
 #SBATCH -J {name}
 
 source /software/lsstsw/stack/loadLSST.bash
-setup obs_subaru
 setup -r /project/parejkoj/stack/jointcal/
+setup -k obs_subaru
 
 pids=()
 
