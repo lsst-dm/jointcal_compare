@@ -1,7 +1,7 @@
 config.doAstrometry = True
 config.astrometryModel = "constrained"
-config.astrometryVisitDegree = 5
-config.astrometryChipDegree = 1
+config.astrometryVisitOrder = 5
+config.astrometryChipOrder = 1
 
 config.doPhotometry = False
 
