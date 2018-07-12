@@ -19,8 +19,8 @@ import astropy.io.ascii
 import astropy.table
 import pandas as pd
 
-# root = "/project/parejkoj/DM-11783/performance"
-root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
+root = "/project/parejkoj/DM-11783/performance"
+# root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
 inglob = os.path.join(root, "*-{}.rst")
 
 
@@ -44,6 +44,7 @@ def read_tables(name, inglob):
         temp.rename_column('Value', 'Value_{}'.format(name))
         tables[tract] = temp
     return tables
+
 
 def plotMetricScatter(df, name1, name2, band):
     """
@@ -72,17 +73,20 @@ def plotMetricScatter(df, name1, name2, band):
     plt.title(title)
     plt.axvline(limit1, color='grey', ls='--')
     plt.axhline(limit2, color='grey', ls='--')
-    plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal")
+    plt.scatter(t1.Value_singleFrame, t2.Value_singleFrame, label="singleFrame")
     plt.scatter(t1.Value_meas_mosaic, t2.Value_meas_mosaic, label="meas_mosaic")
-    plt.plot(np.concatenate([[j, m, None] for j, m in zip(t1.Value_jointcal, t1.Value_meas_mosaic)]),
-             np.concatenate([[j, m, None] for j, m in zip(t2.Value_jointcal, t2.Value_meas_mosaic)]),
+    plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal")
+    plt.plot(np.concatenate([[s, j, m, None] for s, j, m in zip(t1.Value_singleFrame,
+                                                                t1.Value_jointcal,
+                                                                t1.Value_meas_mosaic)]),
+             np.concatenate([[s, j, m, None] for s, j, m in zip(t2.Value_singleFrame,
+                                                                t2.Value_jointcal,
+                                                                t2.Value_meas_mosaic)]),
              'k', alpha=0.1, label="same tract")
     plt.xlabel("%s: %s" % (name1, descriptions[name1]))
     plt.ylabel("%s: %s" % (name2, descriptions[name2]))
     plt.legend()
     plt.savefig("%sv%s_%s.png" % (name1, name2, band))
-
-
 
 
 values = ('singleFrame', 'meas_mosaic', 'jointcal')
