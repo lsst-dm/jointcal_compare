@@ -6,6 +6,7 @@ function do_one_tract()
   if [ -d "$1" ]; then
     TRACT=$(basename $1)
     OUTPATH=$OUTDIR/$TRACT-$TASK.rst
+    echo "executing: reportPerformance.py --output_file=$OUTPATH "$1"/*.json &"
     reportPerformance.py --output_file=$OUTPATH "$1"/*.json &
     pids+=($!)  # Save PID of this background process
     echo "Processing $TRACT to write $OUTPATH with pid: ${pids[-1]}"
