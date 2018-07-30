@@ -3,24 +3,28 @@
 Ingest the ReStructured Text output from validate_drp's reportPerformance.py
 and produce summary tables and plots across all tracts.
 
-Run `reportPerformance.py` from this directory first, to generate the
-necessary files.
+Change the `root` global at the top to the directory containing the .rst files.
+Plots are saved to the current working directory.
+
+Run `reportPerformance.py` from this jointcal_compare/bin/ first, to generate
+the necessary files.
 """
 import glob
 import os.path
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
-sns.set_style("ticks", {"legend.frameon": True})
-sns.set_context("talk")
 
 import numpy as np
 import astropy.io.ascii
 import astropy.table
 import pandas as pd
 
+# The directory containing the files to process.
 # root = "/project/parejkoj/DM-11783/performance"
-root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
+# root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
+root = "/Users/parejkoj/lsst/jointcal/temp/performance"
 inglob = os.path.join(root, "*-{}.rst")
 
 
@@ -39,11 +43,12 @@ def read_tables(name, inglob):
         tract = int(os.path.basename(infile).split('-')[0])
         temp = astropy.io.ascii.read(infile, format='rst',
                                      exclude_names=("Comments", "Release Target: FY17"),
-                                     fill_values=('--', '0'))
+                                     fill_values=[('--', '0'), ('**', '0')])
         temp.rename_column('SRD Requirement: design', 'Design')
         temp.rename_column('Value', 'Value_{}'.format(name))
         tables[tract] = temp
     return tables
+
 
 def plotMetricScatter(df, name1, name2, band):
     """
@@ -72,17 +77,28 @@ def plotMetricScatter(df, name1, name2, band):
     plt.title(title)
     plt.axvline(limit1, color='grey', ls='--')
     plt.axhline(limit2, color='grey', ls='--')
-    plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal")
+    plt.scatter(t1.Value_singleFrame, t2.Value_singleFrame, label="singleFrame")
     plt.scatter(t1.Value_meas_mosaic, t2.Value_meas_mosaic, label="meas_mosaic")
-    plt.plot(np.concatenate([[j, m, None] for j, m in zip(t1.Value_jointcal, t1.Value_meas_mosaic)]),
-             np.concatenate([[j, m, None] for j, m in zip(t2.Value_jointcal, t2.Value_meas_mosaic)]),
-             'k', alpha=0.1, label="same tract")
+    plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal")
+
+    # draw lines from singleFrame->meas_mosaic and singleFrame->jointcal
+    plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_singleFrame,
+                                                          t1.Value_meas_mosaic)]),
+            np.concatenate([[s, j, None] for s, j in zip(t2.Value_singleFrame,
+                                                         t2.Value_meas_mosaic)]),
+            'k', alpha=0.1, label="same tract")
+    plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_singleFrame,
+                                                          t1.Value_jointcal)]),
+            np.concatenate([[s, j, None] for s, j in zip(t2.Value_singleFrame,
+                                                         t2.Value_jointcal)]),
+            'k', alpha=0.1, label="same tract")
+
     plt.xlabel("%s: %s" % (name1, descriptions[name1]))
     plt.ylabel("%s: %s" % (name2, descriptions[name2]))
     plt.legend()
-    plt.savefig("%sv%s_%s.png" % (name1, name2, band))
-
-
+    filename = "%sv%s_%s.png" % (name1, name2, band)
+    plt.savefig(filename)
+    print("Write plot to:", filename)
 
 
 values = ('singleFrame', 'meas_mosaic', 'jointcal')
@@ -95,10 +111,12 @@ tracts = list(singleFrame.keys())
 
 join_keys = ('Metric', 'Filter', 'Operator', 'Design')
 
+print('counts per tract (should be identical): singleFrame, meas_mosaic, jointcal')
 per_tract = {}
 for tract in tracts:
     temp = astropy.table.join(singleFrame[tract], meas_mosaic[tract], keys=join_keys, join_type='outer')
     temp = astropy.table.join(temp, jointcal[tract], keys=join_keys, join_type='outer')
+    print(tract, len(singleFrame[tract]), len(meas_mosaic[tract]), len(jointcal[tract]))
     temp['tract'] = tract  # for group_by()
     # The singleFrame Unit column (Unit_1) is going to have values for all fields,
     # others may not (i.e. if it wasn't measured).
@@ -130,7 +148,7 @@ for filt in filters:
 print()
 print("jointcal calibrations that exceed metrics for a given filter+tract")
 print("------------------------------------------------------------------")
-for metric in ("AM1", "AM2", "PA1"):
+for metric in ("AM1", "AF1", "AM2", "PA1"):
     print("Metric:", metric)
     print("-----------")
     test = data['Metric'] == metric
@@ -140,4 +158,5 @@ for metric in ("AM1", "AM2", "PA1"):
         print("{} > {} for: {} {}".format(x['Value_jointcal'], x['Design'], x['Filter'], x['tract']))
     print()
 
-import ipdb; ipdb.set_trace()
+# uncomment this to muck around with the metrics and look at on-screen plots.
+#import ipdb; ipdb.set_trace()
