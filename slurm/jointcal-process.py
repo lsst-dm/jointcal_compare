@@ -43,12 +43,13 @@ basename = 'jointcal'
 
 pkgdir = lsst.utils.getPackageDir('jointcal_compare')
 
+rerun_name = "DM-14786"
 root = '/project/parejkoj/DM-11783'
 sqlitedir = os.path.join(root, 'tract-visit')
 datadir = '/datasets/hsc/repo'
 outdir = os.path.join(root, basename)
 config = os.path.join(pkgdir, 'config', basename+'Config.py')
-rerun = 'DM-10404/SFM:private/parejkoj/DM-11785'
+rerun = 'DM-10404/SFM:private/parejkoj/'+rerun_name
 
 ccd = "0..8^10..103"
 

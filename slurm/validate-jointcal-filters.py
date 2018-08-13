@@ -45,8 +45,9 @@ basename = 'validate-jointcal'
 
 pkgdir = lsst.utils.getPackageDir('jointcal_compare')
 
+rerun = "DM-14786"
 sqlitedir = '/project/parejkoj/DM-11783/tract-visit'
-datadir = '/datasets/hsc/repo/rerun/private/parejkoj/DM-11785'
+datadir = '/datasets/hsc/repo/rerun/private/parejkoj/'+rerun
 outdir = os.path.join('/project/parejkoj/DM-11783', basename)
 config = os.path.join(pkgdir, 'config', basename+'Config.py')
 
