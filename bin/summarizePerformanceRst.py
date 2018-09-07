@@ -13,7 +13,7 @@ import glob
 import os.path
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')  # noqa: E402
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -24,7 +24,8 @@ import pandas as pd
 # The directory containing the files to process.
 # root = "/project/parejkoj/DM-11783/performance"
 # root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
-root = "/Users/parejkoj/lsst/jointcal/temp/performance"
+# root = "/home/parejkoj/lsst/temp/performance"
+root = "/Users/parejkoj/lsst/temp/performance"
 inglob = os.path.join(root, "*-{}.rst")
 
 
@@ -50,9 +51,10 @@ def read_tables(name, inglob):
     return tables
 
 
-def plotMetricScatter(df, name1, name2, band):
+def plotMetricScatter(df, name1, name2, band,
+                      fromSingle=False, toMosaic=False, xmin=None, ymin=None):
     """
-    Plot two metrics against each other, jointcal vs. meas_mosaic linked by lines.
+    Plot two metrics against each other, e.g. jointcal vs. mosaic linked by lines.
 
     Parameters
     ----------
@@ -64,6 +66,10 @@ def plotMetricScatter(df, name1, name2, band):
         Name of y-axis metric.
     band : `str`
         Filter band to plot.
+    fromSingle : `bool`
+        Plot the line from singleFrame to jointcal, instead of from mosaic.
+    toMosaic : `bool`
+        Plot the line to meas_mosaic, instead of to jointcal.
     """
 
     limit1 = data[data['Metric'] == name1]['Design'][0]
@@ -77,48 +83,64 @@ def plotMetricScatter(df, name1, name2, band):
     plt.title(title)
     plt.axvline(limit1, color='grey', ls='--')
     plt.axhline(limit2, color='grey', ls='--')
-    plt.scatter(t1.Value_singleFrame, t2.Value_singleFrame, label="singleFrame")
-    plt.scatter(t1.Value_meas_mosaic, t2.Value_meas_mosaic, label="meas_mosaic")
-    plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal")
 
-    # draw lines from singleFrame->meas_mosaic and singleFrame->jointcal
-    plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_singleFrame,
-                                                          t1.Value_meas_mosaic)]),
-            np.concatenate([[s, j, None] for s, j in zip(t2.Value_singleFrame,
-                                                         t2.Value_meas_mosaic)]),
-            'k', alpha=0.1, label="same tract")
-    plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_singleFrame,
-                                                          t1.Value_jointcal)]),
-            np.concatenate([[s, j, None] for s, j in zip(t2.Value_singleFrame,
-                                                         t2.Value_jointcal)]),
-            'k', alpha=0.1, label="same tract")
+    # draw lines from single->jointcal or mosaic->jointcal
+    if fromSingle:
+        value2 = 'Value_mosaic' if toMosaic else 'Value_jointcal'
+        plt.scatter(t1.Value_single, t2.Value_single, label="single", color="orange")
+        plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_single,
+                                                              t1[value2])]),
+                 np.concatenate([[s, j, None] for s, j in zip(t2.Value_single,
+                                                              t2[value2])]),
+                 'k', alpha=0.1, label="same tract")
+        prefix = 'single'
+    else:
+        plt.scatter(t1.Value_mosaic, t2.Value_mosaic, label="mosaic", color="purple")
+        plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_mosaic,
+                                                              t1.Value_jointcal)]),
+                 np.concatenate([[s, j, None] for s, j in zip(t2.Value_mosaic,
+                                                              t2.Value_jointcal)]),
+                 'k', alpha=0.1, label="same tract")
+        prefix = 'mosaic'
+
+    if toMosaic:
+        plt.scatter(t1.Value_mosaic, t2.Value_mosaic, label="mosaic", color="purple")
+        suffix = 'mosaic'
+    else:
+        plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal", color="green")
+        suffix = 'jointcal'
 
     plt.xlabel("%s: %s" % (name1, descriptions[name1]))
     plt.ylabel("%s: %s" % (name2, descriptions[name2]))
+    if xmin is not None:
+        plt.xlim(xmin=xmin)
+    if ymin is not None:
+        plt.ylim(ymin=ymin)
     plt.legend()
-    filename = "%sv%s_%s.png" % (name1, name2, band)
+    filename = "%s-%sv%s_%s-%s.png" % (prefix, name1, name2, band, suffix)
     plt.savefig(filename)
-    print("Write plot to:", filename)
+    plt.close()
+    print("Wrote plot to:", filename)
 
 
-values = ('singleFrame', 'meas_mosaic', 'jointcal')
+values = ('single', 'mosaic', 'jointcal')
 
 jointcal = read_tables('jointcal', inglob)
-meas_mosaic = read_tables('meas_mosaic', inglob)
-singleFrame = read_tables('singleFrame', inglob)
+mosaic = read_tables('mosaic', inglob)
+single = read_tables('single', inglob)
 
-tracts = list(singleFrame.keys())
+tracts = list(single.keys())
 
 join_keys = ('Metric', 'Filter', 'Operator', 'Design')
 
-print('counts per tract (should be identical): singleFrame, meas_mosaic, jointcal')
+print('counts per tract (should be identical): single, mosaic, jointcal')
 per_tract = {}
 for tract in tracts:
-    temp = astropy.table.join(singleFrame[tract], meas_mosaic[tract], keys=join_keys, join_type='outer')
+    temp = astropy.table.join(single[tract], mosaic[tract], keys=join_keys, join_type='outer')
     temp = astropy.table.join(temp, jointcal[tract], keys=join_keys, join_type='outer')
-    print(tract, len(singleFrame[tract]), len(meas_mosaic[tract]), len(jointcal[tract]))
+    print(tract, len(single[tract]), len(mosaic[tract]), len(jointcal[tract]))
     temp['tract'] = tract  # for group_by()
-    # The singleFrame Unit column (Unit_1) is going to have values for all fields,
+    # The single Unit column (Unit_1) is going to have values for all fields,
     # others may not (i.e. if it wasn't measured).
     temp.remove_columns(['Unit', 'Unit_2'])
     temp.rename_column('Unit_1', 'Unit')
@@ -141,9 +163,15 @@ descriptions = {
 }
 
 for filt in filters:
-    plotMetricScatter(df, "AM1", "AF1", filt)
-    plotMetricScatter(df, "AM2", "AF2", filt)
+    plotMetricScatter(df, "AM1", "AF1", filt, xmin=0, ymin=0)
+    plotMetricScatter(df, "AM2", "AF2", filt, xmin=0, ymin=0)
     plotMetricScatter(df, "PA1", "PF1", filt)
+    plotMetricScatter(df, "AM1", "AF1", filt, fromSingle=True, xmin=0, ymin=0)
+    plotMetricScatter(df, "AM2", "AF2", filt, fromSingle=True, xmin=0, ymin=0)
+    plotMetricScatter(df, "PA1", "PF1", filt, fromSingle=True)
+    plotMetricScatter(df, "AM1", "AF1", filt, fromSingle=True, toMosaic=True, xmin=0, ymin=0)
+    plotMetricScatter(df, "AM2", "AF2", filt, fromSingle=True, toMosaic=True, xmin=0, ymin=0)
+    plotMetricScatter(df, "PA1", "PF1", filt, fromSingle=True, toMosaic=True)
 
 print()
 print("jointcal calibrations that exceed metrics for a given filter+tract")
@@ -159,4 +187,4 @@ for metric in ("AM1", "AF1", "AM2", "PA1"):
     print()
 
 # uncomment this to muck around with the metrics and look at on-screen plots.
-#import ipdb; ipdb.set_trace()
+# import ipdb; ipdb.set_trace()
