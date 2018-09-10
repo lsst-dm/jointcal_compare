@@ -15,10 +15,10 @@ function do_one_tract()
   fi
 }
 
-if [[ $* =~ ^(jointcal|singleFrame|meas_mosaic)$ ]]; then
+if [[ $* =~ ^(jointcal|single|mosaic)$ ]]; then
   TASK=$*
 else
-  echo 'Please specify one of "jointcal", "singleFrame", "meas_mosaic" as the first argument.'
+  echo 'Please specify one of "jointcal", "single", "mosaic" as the first argument.'
   exit -1
 fi
 

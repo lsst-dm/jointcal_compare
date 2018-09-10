@@ -35,28 +35,31 @@ done
 
 base_cmd = ("srun --output=/project/parejkoj/DM-11783/logs/{name}_{filt}-%J.log"
             " jointcal.py {datadir} --rerun={rerun} -C={config}"
-            " --id ccd={ccd} filter={filt} tract={tract} field={field} visit={visit}"
+            " --id ccd={ccd} filter={filt} tract={tract} visit={visit}"
             " --longlog --no-versions &\n"
             "pids+=($!)  # Save PID of this background process")
 
 basename = 'jointcal'
 
+# NOTE: change this to True to execute the generated scripts.
+call = True
+
+# NOTE: change this to the ticket you're working on.
+rerun_name = "DM-15617"
+
 pkgdir = lsst.utils.getPackageDir('jointcal_compare')
 
-rerun_name = "DM-14786"
 root = '/project/parejkoj/DM-11783'
 sqlitedir = os.path.join(root, 'tract-visit')
 datadir = '/datasets/hsc/repo'
 outdir = os.path.join(root, basename)
 config = os.path.join(pkgdir, 'config', basename+'Config.py')
-rerun = 'DM-10404/SFM:private/parejkoj/'+rerun_name
+rerun = 'DM-13666/{field}:'+os.path.join('private/parejkoj/', rerun_name, '{field}')
 
 ccd = "0..8^10..103"
 
-call = True
 
-
-def find_visits(cursor, tract, filt, field):
+def find_visits(cursor, tract, filt):
     cmd = "select distinct visit from calexp where tract=:tract and filter=:filt"
     cursor.execute(cmd, dict(tract=tract, filt=filt))
     result = cursor.fetchall()
@@ -64,7 +67,7 @@ def find_visits(cursor, tract, filt, field):
     return '^'.join(str(x[0]) for x in result)
 
 
-def generate_one(field, tract, filters, ccd, cursor, call=True):
+def generate_one(field, tract, filters, ccd, cursor, rerun, call=True):
     """Generate and execute a slurm script."""
 
     output = os.path.join(outdir, str(tract))
@@ -75,7 +78,7 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
 
     cmd_list = []
     for filt in filters:
-        visit = find_visits(cursor, tract, filt, field)
+        visit = find_visits(cursor, tract, filt)
         cmd_list.append(base_cmd.format(**fmtstr, filt=filt, visit=visit))
     cmd = '\n'.join(cmd_list)
 
@@ -93,18 +96,18 @@ def generate_one(field, tract, filters, ccd, cursor, call=True):
 
 # deep data:
 tract = 9813
-field = "SSP_UDEEP_COSMOS"
+field = "UDEEP"
 filters = ['HSC-Y', 'HSC-Z', 'HSC-I', 'HSC-R', 'HSC-G']
-conn = sqlite3.connect(os.path.join(sqlitedir, 'dbUDEEP.sqlite3'))
+conn = sqlite3.connect(os.path.join(sqlitedir, 'overlaps_SSPUDEEP_w15.sqlite3'))
 cursor = conn.cursor()
-generate_one(field, tract, filters, ccd, cursor, call=call)
+generate_one(field, tract, filters, ccd, cursor, rerun.format(field=field), call=call)
 
 # wide data:
 tracts = [8521, 8522, 8523, 8524, 8525, 9558, 9559, 9560, 9561, 9371, 9372,
           9373, 9374, 9693, 9694, 9695, 9697, 9698, 15831, 15832, 16009, 16010]
-field = "SSP_WIDE"
+field = "WIDE"
 filters = ['HSC-Y', 'HSC-Z', 'HSC-I', 'HSC-R', 'HSC-G']
-conn = sqlite3.connect(os.path.join(sqlitedir, 'dbWIDE.sqlite3'))
+conn = sqlite3.connect(os.path.join(sqlitedir, 'overlaps_SSPWIDE_w15.sqlite3'))
 cursor = conn.cursor()
 for tract in tracts:
-    generate_one(field, tract, filters, ccd, cursor, call=call)
+    generate_one(field, tract, filters, ccd, cursor, rerun.format(field=field), call=call)
