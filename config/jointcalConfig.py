@@ -1,11 +1,11 @@
 config.doAstrometry = True
 config.astrometryModel = "constrained"
-# config.astrometryVisitOrder = 5
+config.astrometryVisitOrder = 7
 # config.astrometryChipOrder = 1
 
 config.doPhotometry = True
 config.photometryModel = "constrainedMagnitude"
-# config.photometryVisitOrder = 7
+config.photometryVisitOrder = 9
 
 config.astrometryRefObjLoader.ref_dataset_name='ps1_pv3_3pi_20170110'
 config.photometryRefObjLoader.ref_dataset_name='ps1_pv3_3pi_20170110'
