@@ -21,13 +21,6 @@ import astropy.io.ascii
 import astropy.table
 import pandas as pd
 
-# The directory containing the files to process.
-# root = "/project/parejkoj/DM-11783/performance"
-# root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
-root = "/home/parejkoj/lsst/temp/performance"
-# root = "/Users/parejkoj/lsst/temp/performance"
-inglob = os.path.join(root, "*-{}.rst")
-
 
 def read_tables(name, inglob):
     """Ingest the .rst files with astropy and return a dict of astropy.tables
@@ -40,7 +33,10 @@ def read_tables(name, inglob):
         glob pattern to use to search for files with (modified by `inglob.format(name)`)
     """
     tables = {}
-    for infile in glob.glob(inglob.format(name)):
+    files = glob.glob(inglob.format(name))
+    if files == []:
+        raise RuntimeError("No files found for glob: %s"%inglob.format(name))
+    for infile in files:
         tract = int(os.path.basename(infile).split('-')[0])
         temp = astropy.io.ascii.read(infile, format='rst',
                                      exclude_names=("Comments", "Release Target: FY17"),
@@ -69,7 +65,7 @@ def plotMetricScatter(data, df, name1, name2, band, descriptions,
     band : `str`
         Filter band to plot.
     descriptions : `dict` of `str`
-        Descriptions of the names, to inform the plot axes.
+        name: descriptions, used to label the plot axes.
     fromSingle : `bool`
         Plot the line from singleFrame to jointcal, instead of from mosaic.
     toMosaic : `bool`
@@ -127,17 +123,20 @@ def plotMetricScatter(data, df, name1, name2, band, descriptions,
     print("Wrote plot to:", filename)
 
 
-def main():
+def main(args):
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("path", metavar="path", nargs='?', type=str, default='.',
+                        help="Path containing the .rst files to process (default=%(default)s).")
     parser.add_argument("-p", "--plot", action="store_true",
                         help="Generate metric comparison plots.")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Be more verbose when reading and computing statistics.")
     parser.add_argument("-i", "--interactive", action="store_true",
                         help="Open an ipdb console before exiting.")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
+    inglob = os.path.join(args.path, "*-{}.rst")
     jointcal = read_tables('jointcal', inglob)
     mosaic = read_tables('mosaic', inglob)
     single = read_tables('single', inglob)
@@ -219,7 +218,8 @@ def main():
         """Print a green `>` if y is less than x+N*sigma, otherwise a red `<`."""
         threshold = x + N*sigma
         if (verbose or threshold < y):
-            less = "\033[92m>\033[0m" if threshold > y else "\033[91m<\033[0m"
+            sign = ">" if threshold > y else "<"
+            less = f"\033[92m{sign}\033[0m" if threshold > y else f"\033[91m{sign}\033[0m"
             print("%s : (%s + %s*%.3f = %.3f) %s %s"%(name, x, N, sigma, threshold, less, y))
             return True
         return False
@@ -253,4 +253,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1:])
