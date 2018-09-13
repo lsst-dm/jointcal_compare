@@ -163,6 +163,29 @@ def main(args):
             plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions, xmin=0, ymin=0)
             plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions)
 
+    def rms(x):
+        """Compute the root mean squared of a distribution."""
+        return np.sqrt(np.mean(x**2))
+
+    def print_y_is_less(x, y, name, verbose=False):
+        """Print a green `>` if y is less than x, otherwise a red `<`."""
+        if (verbose or x < y):
+            print(name, x, "\033[92m>\033[0m" if x > y else "\033[91m<\033[0m", y)
+
+    # compute final summary statistics
+    print("mosaic vs. jointcal metric RMSs")
+    print("-------------------------------")
+    for metric in ("AM1", "AF1", "AM2", "AF2", "PA1", "PF1"):
+        print("7th order tracts that exceed the 5th order metric for", metric)
+        test = (data['Metric'] == metric) & (data['tract'] != 9813)
+        order5 = data[test]['Value_DM-15617']
+        order7 = data[test]['Value_DM-15713']
+        name = metric
+        for x in data[test]:
+            name = "{} {}".format(x['Filter'], x['tract'])
+            print_y_is_less(x['Value_DM-15617'], x['Value_DM-15713'], name, verbose=args.verbose)
+        print()
+
     if args.interactive:
         import ipdb
         ipdb.set_trace()
