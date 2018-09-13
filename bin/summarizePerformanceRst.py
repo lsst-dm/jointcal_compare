@@ -3,7 +3,6 @@
 Ingest the ReStructured Text output from validate_drp's reportPerformance.py
 and produce summary tables and plots across all tracts.
 
-Change the `root` global at the top to the directory containing the .rst files.
 Plots are saved to the current working directory.
 
 Run `reportPerformance.py` from this jointcal_compare/bin/ first, to generate
