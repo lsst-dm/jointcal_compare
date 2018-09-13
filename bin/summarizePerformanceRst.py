@@ -21,13 +21,6 @@ import astropy.io.ascii
 import astropy.table
 import pandas as pd
 
-# The directory containing the files to process.
-# root = "/project/parejkoj/DM-11783/performance"
-# root = "/home/parejkoj/lsst/temp/sshfs-mount/DM-11783/performance"
-# root = "/home/parejkoj/lsst/temp/performance"
-root = "/Users/parejkoj/lsst/temp/performance"
-inglob = os.path.join(root, "*-{}.rst")
-
 
 def read_tables(name, inglob):
     """Ingest the .rst files with astropy and return a dict of astropy.tables
@@ -40,7 +33,10 @@ def read_tables(name, inglob):
         glob pattern to use to search for files with (modified by `inglob.format(name)`)
     """
     tables = {}
-    for infile in glob.glob(inglob.format(name)):
+    files = glob.glob(inglob.format(name))
+    if files == []:
+        raise RuntimeError("No files found for glob: %s"%inglob.format(name))
+    for infile in files:
         tract = int(os.path.basename(infile).split('-')[0])
         temp = astropy.io.ascii.read(infile, format='rst',
                                      exclude_names=("Comments", "Release Target: FY17"),
@@ -51,13 +47,15 @@ def read_tables(name, inglob):
     return tables
 
 
-def plotMetricScatter(df, name1, name2, band,
+def plotMetricScatter(data, df, name1, name2, band, descriptions,
                       fromSingle=False, toMosaic=False, xmin=None, ymin=None):
     """
     Plot two metrics against each other, e.g. jointcal vs. mosaic linked by lines.
 
     Parameters
     ----------
+    data : `astropy.table`
+        Astropy table containing the merged data.
     df : `pandas.Dataframe`
         Dataframe containing the data.
     name1 : `str`
@@ -66,6 +64,8 @@ def plotMetricScatter(df, name1, name2, band,
         Name of y-axis metric.
     band : `str`
         Filter band to plot.
+    descriptions : `dict` of `str`
+        name: descriptions, used to label the plot axes.
     fromSingle : `bool`
         Plot the line from singleFrame to jointcal, instead of from mosaic.
     toMosaic : `bool`
@@ -123,68 +123,135 @@ def plotMetricScatter(df, name1, name2, band,
     print("Wrote plot to:", filename)
 
 
-values = ('single', 'mosaic', 'jointcal')
+def main(args):
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("path", metavar="path", nargs='?', type=str, default='.',
+                        help="Path containing the .rst files to process (default=%(default)s).")
+    parser.add_argument("-p", "--plot", action="store_true",
+                        help="Generate metric comparison plots.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Be more verbose when reading and computing statistics.")
+    parser.add_argument("-i", "--interactive", action="store_true",
+                        help="Open an ipdb console before exiting.")
+    args = parser.parse_args(args)
 
-jointcal = read_tables('jointcal', inglob)
-mosaic = read_tables('mosaic', inglob)
-single = read_tables('single', inglob)
+    inglob = os.path.join(args.path, "*-{}.rst")
+    jointcal = read_tables('jointcal', inglob)
+    mosaic = read_tables('mosaic', inglob)
+    single = read_tables('single', inglob)
 
-tracts = list(single.keys())
+    tracts = list(single.keys())
 
-join_keys = ('Metric', 'Filter', 'Operator', 'Design')
+    join_keys = ('Metric', 'Filter', 'Operator', 'Design')
 
-print('counts per tract (should be identical): single, mosaic, jointcal')
-per_tract = {}
-for tract in tracts:
-    temp = astropy.table.join(single[tract], mosaic[tract], keys=join_keys, join_type='outer')
-    temp = astropy.table.join(temp, jointcal[tract], keys=join_keys, join_type='outer')
-    print(tract, len(single[tract]), len(mosaic[tract]), len(jointcal[tract]))
-    temp['tract'] = tract  # for group_by()
-    # The single Unit column (Unit_1) is going to have values for all fields,
-    # others may not (i.e. if it wasn't measured).
-    temp.remove_columns(['Unit', 'Unit_2'])
-    temp.rename_column('Unit_1', 'Unit')
-    per_tract[tract] = temp
+    if args.verbose:
+        print('counts per tract (should be identical): single, mosaic, jointcal')
+    per_tract = {}
+    for tract in tracts:
+        temp = astropy.table.join(single[tract], mosaic[tract], keys=join_keys, join_type='outer')
+        temp = astropy.table.join(temp, jointcal[tract], keys=join_keys, join_type='outer')
+        if args.verbose:
+            print(tract, len(single[tract]), len(mosaic[tract]), len(jointcal[tract]))
+        temp['tract'] = tract  # for group_by()
+        # The single Unit column (Unit_1) is going to have values for all fields,
+        # others may not (i.e. if it wasn't measured).
+        temp.remove_columns(['Unit', 'Unit_2'])
+        temp.rename_column('Unit_1', 'Unit')
+        per_tract[tract] = temp
 
-data = astropy.table.vstack(list(per_tract.values()))
+    data = astropy.table.vstack(list(per_tract.values()))
 
-filters = set(data['Filter'])
+    filters = set(data['Filter'])
 
-df = data.to_pandas()
-df.set_index(pd.MultiIndex.from_arrays([df.Metric, df.Filter]), inplace=True)
+    df = data.to_pandas()
+    df.set_index(pd.MultiIndex.from_arrays([df.Metric, df.Filter]), inplace=True)
 
-descriptions = {
-    "AM1": "repeatability (marcsec) for pairs at 5 arcmin",
-    "AM2": "repeatability (marcsec) for pairs at 20 arcmin",
-    "AF1": "outlier fraction (%) for pairs at 5 min",
-    "AF2": "outlier fraction (%) for pairs at 20 min",
-    "PA1": "repeatability (mmag) of PSF source magnitudes",
-    "PF1": "outlier fraction (%) deviating by more than PA2"
-}
+    descriptions = {
+        "AM1": "repeatability (marcsec) for pairs at 5 arcmin",
+        "AM2": "repeatability (marcsec) for pairs at 20 arcmin",
+        "AF1": "outlier fraction (%) for pairs at 5 min",
+        "AF2": "outlier fraction (%) for pairs at 20 min",
+        "PA1": "repeatability (mmag) of PSF source magnitudes",
+        "PF1": "outlier fraction (%) deviating by more than PA2"
+    }
 
-for filt in filters:
-    plotMetricScatter(df, "AM1", "AF1", filt, xmin=0, ymin=0)
-    plotMetricScatter(df, "AM2", "AF2", filt, xmin=0, ymin=0)
-    plotMetricScatter(df, "PA1", "PF1", filt)
-    plotMetricScatter(df, "AM1", "AF1", filt, fromSingle=True, xmin=0, ymin=0)
-    plotMetricScatter(df, "AM2", "AF2", filt, fromSingle=True, xmin=0, ymin=0)
-    plotMetricScatter(df, "PA1", "PF1", filt, fromSingle=True)
-    plotMetricScatter(df, "AM1", "AF1", filt, fromSingle=True, toMosaic=True, xmin=0, ymin=0)
-    plotMetricScatter(df, "AM2", "AF2", filt, fromSingle=True, toMosaic=True, xmin=0, ymin=0)
-    plotMetricScatter(df, "PA1", "PF1", filt, fromSingle=True, toMosaic=True)
+    if args.plot:
+        for filt in filters:
+            plotMetricScatter(data, df, "AM1", "AF1", filt, descriptions, xmin=0, ymin=0)
+            plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions, xmin=0, ymin=0)
+            plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions)
+            plotMetricScatter(data, df, "AM1", "AF1", filt, descriptions, fromSingle=True, xmin=0, ymin=0)
+            plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions, fromSingle=True, xmin=0, ymin=0)
+            plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions, fromSingle=True)
+            plotMetricScatter(data, df, "AM1", "AF1", filt, descriptions,
+                              fromSingle=True, toMosaic=True, xmin=0, ymin=0)
+            plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions,
+                              fromSingle=True, toMosaic=True, xmin=0, ymin=0)
+            plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions, fromSingle=True, toMosaic=True)
 
-print()
-print("jointcal calibrations that exceed metrics for a given filter+tract")
-print("------------------------------------------------------------------")
-for metric in ("AM1", "AF1", "AM2", "PA1"):
-    print("Metric:", metric)
-    print("-----------")
-    test = data['Metric'] == metric
-    limit = data[test]['Design']
-    exceed = data[test]['Value_jointcal'] >= limit
-    for x in data[test][exceed]:
-        print("{} > {} for: {} {}".format(x['Value_jointcal'], x['Design'], x['Filter'], x['tract']))
     print()
+    print("jointcal calibrations that exceed metrics for a given filter+tract")
+    print("------------------------------------------------------------------")
 
-# uncomment this to muck around with the metrics and look at on-screen plots.
-# import ipdb; ipdb.set_trace()
+    # not including "PA1" metric here, since it's always above the spec
+    for metric in ("AM1", "AF1", "AM2", "AF2"):
+        print("Metric:", metric)
+        print("-----------")
+        test = data['Metric'] == metric
+        limit = data[test]['Design']
+        exceed = data[test]['Value_jointcal'] >= limit
+        for x in data[test][exceed]:
+            print("{} {} : {} > {}".format(x['Filter'], x['tract'], x['Value_jointcal'], x['Design']))
+        print()
+
+    def rms(x):
+        """Compute the root mean squared of a distribution."""
+        return np.sqrt(np.mean(x**2))
+
+    def print_y_is_less(x, y, name, verbose=False):
+        """Print a green `>` if y is less than x, otherwise a red `<`."""
+        if (verbose or x < y):
+            print(name, x, "\033[92m>\033[0m" if x > y else "\033[91m<\033[0m", y)
+
+    def print_y_is_less2(x, N, sigma, y, name, verbose=False):
+        """Print a green `>` if y is less than x+N*sigma, otherwise a red `<`."""
+        threshold = x + N*sigma
+        if (verbose or threshold < y):
+            sign = ">" if threshold > y else "<"
+            less = f"\033[92m{sign}\033[0m" if threshold > y else f"\033[91m{sign}\033[0m"
+            print("%s : (%s + %s*%.3f = %.3f) %s %s"%(name, x, N, sigma, threshold, less, y))
+            return True
+        return False
+
+    # compute final summary statistics
+    print("mosaic vs. jointcal metric RMSs")
+    print("-------------------------------")
+    for metric in ("AM1", "AF1", "AM2", "AF2", "PA1", "PF1"):
+        print("jointcal tracts that exceed mosaic metric for", metric)
+        test = (data['Metric'] == metric) & (data['tract'] != 9813)
+        mosaic = data[test]['Value_mosaic']
+        jointcal = data[test]['Value_jointcal']
+        mosaic_rms = rms(mosaic)
+        # jointcal_rms = rms(jointcal)
+        name = metric + ' rms: '
+        for x in data[test]:
+            name = "{} {}".format(x['Filter'], x['tract'])
+            printed = print_y_is_less2(x['Value_mosaic'], 1, mosaic_rms, x['Value_jointcal'], name,
+                                       verbose=args.verbose)
+            print_y_is_less2(x['Value_mosaic'], 2, mosaic_rms, x['Value_jointcal'], name,
+                             verbose=args.verbose)
+            print_y_is_less2(x['Value_mosaic'], 3, mosaic_rms, x['Value_jointcal'], name,
+                             verbose=args.verbose)
+            if printed:
+                print()
+        print()
+
+    if args.interactive:
+        import ipdb
+        ipdb.set_trace()
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
