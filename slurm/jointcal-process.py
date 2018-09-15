@@ -45,7 +45,7 @@ basename = 'jointcal'
 call = True
 
 # NOTE: change this to the ticket you're working on.
-rerun_name = "DM-15617"
+rerun_name = "DM-15713"
 
 pkgdir = lsst.utils.getPackageDir('jointcal_compare')
 

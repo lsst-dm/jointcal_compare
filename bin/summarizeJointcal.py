@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 """
+Compare DM-15617 and DM-15713 jointcal runs (the second with higher order
+polynomials than the first).
+
 Ingest the ReStructured Text output from validate_drp's reportPerformance.py
 and produce summary tables and plots across all tracts.
 
@@ -46,8 +49,7 @@ def read_tables(name, inglob):
     return tables
 
 
-def plotMetricScatter(data, df, name1, name2, band, descriptions,
-                      fromSingle=False, toMosaic=False, xmin=None, ymin=None):
+def plotMetricScatter(data, df, name1, name2, band, descriptions, xmin=None, ymin=None):
     """
     Plot two metrics against each other, e.g. jointcal vs. mosaic linked by lines.
 
@@ -65,10 +67,6 @@ def plotMetricScatter(data, df, name1, name2, band, descriptions,
         Filter band to plot.
     descriptions : `dict` of `str`
         name: descriptions, used to label the plot axes.
-    fromSingle : `bool`
-        Plot the line from singleFrame to jointcal, instead of from mosaic.
-    toMosaic : `bool`
-        Plot the line to meas_mosaic, instead of to jointcal.
     """
 
     limit1 = data[data['Metric'] == name1]['Design'][0]
@@ -83,31 +81,17 @@ def plotMetricScatter(data, df, name1, name2, band, descriptions,
     plt.axvline(limit1, color='grey', ls='--')
     plt.axhline(limit2, color='grey', ls='--')
 
-    # draw lines from single->jointcal or mosaic->jointcal
-    if fromSingle:
-        value2 = 'Value_mosaic' if toMosaic else 'Value_jointcal'
-        plt.scatter(t1.Value_single, t2.Value_single, label="single", color="orange")
-        plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_single,
-                                                              t1[value2])]),
-                 np.concatenate([[s, j, None] for s, j in zip(t2.Value_single,
-                                                              t2[value2])]),
-                 'k', alpha=0.1, label="same tract")
-        prefix = 'single'
-    else:
-        plt.scatter(t1.Value_mosaic, t2.Value_mosaic, label="mosaic", color="purple")
-        plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1.Value_mosaic,
-                                                              t1.Value_jointcal)]),
-                 np.concatenate([[s, j, None] for s, j in zip(t2.Value_mosaic,
-                                                              t2.Value_jointcal)]),
-                 'k', alpha=0.1, label="same tract")
-        prefix = 'mosaic'
+    # draw lines from order5->order7
+    value2 = 'Value_DM-15713'
+    plt.scatter(t1['Value_DM-15617'], t2['Value_DM-15617'], label="low order", color="orange")
+    plt.plot(np.concatenate([[s, j, None] for s, j in zip(t1['Value_DM-15617'],
+                                                          t1[value2])]),
+             np.concatenate([[s, j, None] for s, j in zip(t2['Value_DM-15617'],
+                                                          t2[value2])]),
+             'k', alpha=0.1, label="same tract")
 
-    if toMosaic:
-        plt.scatter(t1.Value_mosaic, t2.Value_mosaic, label="mosaic", color="purple")
-        suffix = 'mosaic'
-    else:
-        plt.scatter(t1.Value_jointcal, t2.Value_jointcal, label="jointcal", color="green")
-        suffix = 'jointcal'
+    plt.scatter(t1['Value_DM-15713'], t2['Value_DM-15713'], label="high order", color="green")
+    suffix = 'jointcal'
 
     plt.xlabel("%s: %s" % (name1, descriptions[name1]))
     plt.ylabel("%s: %s" % (name2, descriptions[name2]))
@@ -116,7 +100,7 @@ def plotMetricScatter(data, df, name1, name2, band, descriptions,
     if ymin is not None:
         plt.ylim(ymin=ymin)
     plt.legend()
-    filename = "%s-%sv%s_%s-%s.png" % (prefix, name1, name2, band, suffix)
+    filename = "%sv%s_%s-%s.png" % (name1, name2, band, suffix)
     plt.savefig(filename)
     plt.close()
     print("Wrote plot to:", filename)
@@ -135,12 +119,11 @@ def main(args):
                         help="Open an ipdb console before exiting.")
     args = parser.parse_args(args)
 
-    inglob = os.path.join(args.path, "*-{}.rst")
-    jointcal = read_tables('jointcal', inglob)
-    mosaic = read_tables('mosaic', inglob)
-    single = read_tables('single', inglob)
+    inglob = os.path.join(args.path, "{}/performance/*-jointcal.rst")
+    order5 = read_tables('DM-15617', inglob)
+    order7 = read_tables('DM-15713', inglob)
 
-    tracts = list(single.keys())
+    tracts = list(order5.keys())
 
     join_keys = ('Metric', 'Filter', 'Operator', 'Design')
 
@@ -148,14 +131,13 @@ def main(args):
         print('counts per tract (should be identical): single, mosaic, jointcal')
     per_tract = {}
     for tract in tracts:
-        temp = astropy.table.join(single[tract], mosaic[tract], keys=join_keys, join_type='outer')
-        temp = astropy.table.join(temp, jointcal[tract], keys=join_keys, join_type='outer')
+        # temp = astropy.table.join(single[tract], mosaic[tract], keys=join_keys, join_type='outer')
+        temp = astropy.table.join(order5[tract], order7[tract], keys=join_keys, join_type='outer')
         if args.verbose:
-            print(tract, len(single[tract]), len(mosaic[tract]), len(jointcal[tract]))
+            print(tract, len(order5[tract]), len(order7[tract]))
         temp['tract'] = tract  # for group_by()
-        # The single Unit column (Unit_1) is going to have values for all fields,
-        # others may not (i.e. if it wasn't measured).
-        temp.remove_columns(['Unit', 'Unit_2'])
+        # These are identical, so we only need one of them.
+        temp.remove_columns(['Unit_2'])
         temp.rename_column('Unit_1', 'Unit')
         per_tract[tract] = temp
 
@@ -180,29 +162,6 @@ def main(args):
             plotMetricScatter(data, df, "AM1", "AF1", filt, descriptions, xmin=0, ymin=0)
             plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions, xmin=0, ymin=0)
             plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions)
-            plotMetricScatter(data, df, "AM1", "AF1", filt, descriptions, fromSingle=True, xmin=0, ymin=0)
-            plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions, fromSingle=True, xmin=0, ymin=0)
-            plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions, fromSingle=True)
-            plotMetricScatter(data, df, "AM1", "AF1", filt, descriptions,
-                              fromSingle=True, toMosaic=True, xmin=0, ymin=0)
-            plotMetricScatter(data, df, "AM2", "AF2", filt, descriptions,
-                              fromSingle=True, toMosaic=True, xmin=0, ymin=0)
-            plotMetricScatter(data, df, "PA1", "PF1", filt, descriptions, fromSingle=True, toMosaic=True)
-
-    print()
-    print("jointcal calibrations that exceed metrics for a given filter+tract")
-    print("------------------------------------------------------------------")
-
-    # not including "PA1" metric here, since it's always above the spec
-    for metric in ("AM1", "AF1", "AM2", "AF2"):
-        print("Metric:", metric)
-        print("-----------")
-        test = data['Metric'] == metric
-        limit = data[test]['Design']
-        exceed = data[test]['Value_jointcal'] >= limit
-        for x in data[test][exceed]:
-            print("{} {} : {} > {}".format(x['Filter'], x['tract'], x['Value_jointcal'], x['Design']))
-        print()
 
     def rms(x):
         """Compute the root mean squared of a distribution."""
@@ -213,37 +172,18 @@ def main(args):
         if (verbose or x < y):
             print(name, x, "\033[92m>\033[0m" if x > y else "\033[91m<\033[0m", y)
 
-    def print_y_is_less2(x, N, sigma, y, name, verbose=False):
-        """Print a green `>` if y is less than x+N*sigma, otherwise a red `<`."""
-        threshold = x + N*sigma
-        if (verbose or threshold < y):
-            sign = ">" if threshold > y else "<"
-            less = f"\033[92m{sign}\033[0m" if threshold > y else f"\033[91m{sign}\033[0m"
-            print("%s : (%s + %s*%.3f = %.3f) %s %s"%(name, x, N, sigma, threshold, less, y))
-            return True
-        return False
-
     # compute final summary statistics
     print("mosaic vs. jointcal metric RMSs")
     print("-------------------------------")
     for metric in ("AM1", "AF1", "AM2", "AF2", "PA1", "PF1"):
-        print("jointcal tracts that exceed mosaic metric for", metric)
+        print("7th order tracts that exceed the 5th order metric for", metric)
         test = (data['Metric'] == metric) & (data['tract'] != 9813)
-        mosaic = data[test]['Value_mosaic']
-        jointcal = data[test]['Value_jointcal']
-        mosaic_rms = rms(mosaic)
-        # jointcal_rms = rms(jointcal)
-        name = metric + ' rms: '
+        order5 = data[test]['Value_DM-15617']
+        order7 = data[test]['Value_DM-15713']
+        name = metric
         for x in data[test]:
             name = "{} {}".format(x['Filter'], x['tract'])
-            printed = print_y_is_less2(x['Value_mosaic'], 1, mosaic_rms, x['Value_jointcal'], name,
-                                       verbose=args.verbose)
-            print_y_is_less2(x['Value_mosaic'], 2, mosaic_rms, x['Value_jointcal'], name,
-                             verbose=args.verbose)
-            print_y_is_less2(x['Value_mosaic'], 3, mosaic_rms, x['Value_jointcal'], name,
-                             verbose=args.verbose)
-            if printed:
-                print()
+            print_y_is_less(x['Value_DM-15617'], x['Value_DM-15713'], name, verbose=args.verbose)
         print()
 
     if args.interactive:

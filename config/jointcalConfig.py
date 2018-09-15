@@ -1,6 +1,6 @@
 config.doAstrometry = True
 config.astrometryModel = "constrained"
-# config.astrometryVisitOrder = 5
+config.astrometryVisitOrder = 7
 # config.astrometryChipOrder = 1
 
 config.doPhotometry = True
